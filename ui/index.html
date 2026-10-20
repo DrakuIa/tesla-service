@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tesla сервис</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #fff; --text: #1d1f23; --muted: #6b7280; --line: #e3e5e9;
+  --accent: #2563eb; --accent-text: #fff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+  --auto: #dbeafe; --guided: #ede9fe; --partner: #f3f4f6; --console: #111827; --console-text: #d1fae5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317; --card: #1b1e24; --text: #e8eaed; --muted: #9aa0a8; --line: #2c3038;
+    --accent: #3b82f6; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+    --auto: #1e3a5f; --guided: #3b2f63; --partner: #2a2d33; --console: #05070a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+header h1 { font-size: 18px; margin: 0; }
+.head-right { display: flex; align-items: center; gap: 8px; }
+.head-right select { width: auto; margin: 0; }
+@media (max-width: 520px) { #mode { display: none; } }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+@media (min-width: 900px) { main { grid-template-columns: 1fr 1fr; } .wide { grid-column: 1 / -1; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.card h2 { font-size: 16px; margin: 0 0 12px; }
+.card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 8px; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; margin-top: 3px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+button { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; background: var(--card); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button:disabled { opacity: .5; cursor: default; }
+.services { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.svc { text-align: left; padding: 10px 12px; min-height: 64px; }
+.svc small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.svc.auto { background: var(--auto); } .svc.guided { background: var(--guided); } .svc.partner { background: var(--partner); }
+.console { background: var(--console); color: var(--console-text); font: 13px/1.5 ui-monospace, Consolas, monospace; border-radius: 8px; padding: 10px; height: 200px; overflow: auto; white-space: pre-wrap; }
+.steps label { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: 14px; }
+.steps input { width: auto; margin-top: 4px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; background: var(--partner); }
+.badge.capturing { background: var(--auto); } .badge.done { color: var(--ok); } .badge.error { color: var(--bad); }
+.history div { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.history small { color: var(--muted); }
+.prep { padding: 10px; border-radius: 8px; background: var(--auto); margin-bottom: 10px; }
+a { color: var(--accent); }
+.hidden { display: none; }
+.vin-info { font-size: 13px; background: var(--bg); border-radius: 8px; padding: 8px 10px; margin: -2px 0 10px; }
+.vin-info.warn { color: var(--warn); }
+.car-known { font-size: 14px; background: var(--guided); border-radius: 8px; padding: 10px 12px; margin: -2px 0 10px; }
+.tabs { display: flex; gap: 6px; margin: 16px 0 4px; }
+.tab { padding: 6px 12px; font-size: 13px; }
+.tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+#j_frame { width: 100%; height: 820px; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="shop">Tesla сервис</h1>
+  <div class="head-right"><span id="mode" class="badge"></span>
+    <select id="lang" onchange="setLang(this.value)" aria-label="Language"></select>
+    <button onclick="toggle('settings')" data-i18n="settings"></button></div>
+</header>
+<main>
+  <section id="settings" class="card wide hidden">
+    <h2 data-i18n="settings_title"></h2>
+    <div class="row">
+      <label><span data-i18n="adapter"></span>
+        <select id="s_interface">
+          <option value="simulate" data-i18n="adapter_sim"></option>
+          <option value="pcan">PCAN-USB</option>
+          <option value="slcan">CANable (slcan, COM)</option>
+          <option value="gs_usb">CANable (candleLight, gs_usb)</option>
+          <option value="kvaser">Kvaser</option>
+        </select></label>
+      <label><span data-i18n="channel"></span> <input id="s_channel" placeholder="PCAN_USBBUS1 / COM3"></label>
+      <label><span data-i18n="bitrate"></span> <input id="s_bitrate" type="number"></label>
+      <label><span data-i18n="toolbox_url"></span> <input id="s_toolbox_url"></label>
+      <label><span data-i18n="shop_name"></span> <input id="s_shop_name"></label>
+      <label><span data-i18n="shop_phone"></span> <input id="s_shop_phone"></label>
+      <label><span data-i18n="currency"></span> <input id="s_currency"></label>
+    </div>
+    <button class="primary" onclick="saveSettings()" data-i18n="save"></button>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="client_title"></h2>
+    <div class="row">
+      <label><span data-i18n="name"></span> <input id="c_name"></label>
+      <label><span data-i18n="phone"></span> <input id="c_phone"></label>
+      <label><span data-i18n="model"></span>
+        <select id="c_car" onchange="fillVariants()"><option>Model 3</option><option>Model Y</option><option>Model S</option><option>Model X</option></select></label>
+      <label><span data-i18n="year"></span> <input id="c_year" inputmode="numeric" oninput="fillVariants()"></label>
+    </div>
+    <label>VIN <input id="c_vin" maxlength="17" style="text-transform:uppercase" oninput="checkVin()"></label>
+    <div id="vin_info" class="vin-info hidden"></div>
+    <div id="car_known" class="car-known hidden"></div>
+    <label><span data-i18n="variant"></span> <select id="c_variant"></select></label>
+    <div class="tabs">
+      <button id="tab_jobs" class="tab active" onclick="showTab('jobs')" data-i18n="tab_jobs"></button>
+      <button id="tab_cars" class="tab" onclick="showTab('cars')" data-i18n="tab_cars"></button>
+    </div>
+    <div id="history" class="history"></div>
+    <div id="cars" class="history hidden"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="services"></h2>
+    <div id="catalog"></div>
+    <p style="color:var(--muted);font-size:13px" data-i18n="legend"></p>
+  </section>
+
+  <section id="job" class="card wide hidden">
+    <h2><span id="j_title"></span> <span id="j_status" class="badge"></span></h2>
+    <div id="j_prep" class="prep hidden"></div>
+    <div id="j_console" class="console"></div>
+    <div class="actions" id="j_actions"></div>
+    <div id="j_steps" class="steps"></div>
+    <div id="j_reports"></div>
+    <iframe id="j_frame" class="hidden" title="report"></iframe>
+    <div class="row" style="margin-top:12px">
+      <label><span data-i18n="notes"></span> <textarea id="j_notes" rows="3"></textarea></label>
+      <label><span data-i18n="price"></span> <input id="j_price" inputmode="decimal"></label>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="finishJob()" data-i18n="finish"></button>
+      <button onclick="closeJob()" data-i18n="close"></button>
+    </div>
+  </section>
+</main>
+
+<script>
+let catalog, current, poll, ui = {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api = (url, body) => fetch(url, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+  .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); return d; });
+const toggle = id => $(id).classList.toggle("hidden");
+const SETTINGS_KEYS = ["lang", "interface", "channel", "bitrate", "toolbox_url", "shop_name", "shop_phone", "currency"];
+const statusLabel = s => ui["status_" + s] || s;
+const serviceName = id => (catalog.services.find(x => x.id === id) || {}).name || id;
+
+function client() {
+  return {name: $("c_name").value.trim(), phone: $("c_phone").value.trim(), car: $("c_car").value,
+          year: $("c_year").value.trim(), vin: $("c_vin").value.trim().toUpperCase(), variant: $("c_variant").value};
+}
+
+async function load() {
+  catalog = await api("/api/catalog");
+  ui = catalog.ui;
+  const s = catalog.settings;
+  document.documentElement.lang = s.lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = ui[el.dataset.i18n]);
+  $("lang").innerHTML = Object.entries(catalog.langs).map(([k, v]) => `<option value="${k}" ${k === s.lang ? "selected" : ""}>${v}</option>`).join("");
+  for (const k of SETTINGS_KEYS.slice(1)) $("s_" + k).value = s[k];
+  $("shop").textContent = document.title = s.shop_name;
+  $("mode").textContent = s.interface === "simulate" ? ui.mode_sim : ui.mode_adapter + ": " + s.interface;
+  $("catalog").innerHTML = catalog.groups.map(([g, title]) => `<h3>${esc(title)}</h3><div class="services">` +
+    catalog.services.filter(x => x.group === g).map(x =>
+      `<button class="svc ${x.mode}" onclick="startService('${x.id}')">${esc(x.name)}<small>${ui["mode_" + x.mode]}${x.minutes ? " · ~" + x.minutes + " " + ui.min : ""}</small></button>`).join("") +
+    `</div>`).join("");
+  loadHistory();
+  fillVariants();
+  checkVin();
+  if (current) render();
+}
+
+function fillVariants(selected) {
+  const model = $("c_car").value, year = parseInt($("c_year").value);
+  const keep = selected ?? $("c_variant").value;
+  const list = catalog.variants.filter(v => v.model === model && (!year || (v.years[0] <= year && year <= v.years[1])));
+  $("c_variant").innerHTML = `<option value="">${ui.variant_auto}</option>` +
+    list.map(v => `<option value="${v.id}">${esc(v.name)} (${v.years[0]}–${v.years[1]})</option>`).join("");
+  if (list.some(v => v.id === keep)) $("c_variant").value = keep;
+}
+
+async function checkVin() {
+  const v = $("c_vin").value.trim();
+  if (v.length !== 17) { $("vin_info").classList.add("hidden"); $("car_known").classList.add("hidden"); return; }
+  const known = await api("/api/car/" + encodeURIComponent(v.toUpperCase()));
+  $("car_known").classList.toggle("hidden", !known.visits);
+  if (known.visits) {
+    $("car_known").innerHTML = `<b>${ui.hist_known}</b>: ${known.visits} ${ui.hist_visits}, ${ui.hist_last} ${esc(known.last.split("-").reverse().join("."))}` +
+      ` · <a href="/car/${known.vin}" target="_blank">${ui.hist_open}</a>`;
+    // подставляем клиента и машину из прошлых визитов, если поля пустые
+    if (!$("c_name").value) $("c_name").value = known.name;
+    if (!$("c_phone").value) $("c_phone").value = known.phone;
+    if (!$("c_year").value && known.year) $("c_year").value = known.year;
+    if (known.car) $("c_car").value = known.car;
+    fillVariants(known.variant || "");
+  }
+  const d = await api("/api/vin?v=" + encodeURIComponent(v));
+  if (!d.lines) return;
+  if (d.model) $("c_car").value = d.model;
+  if (d.year && !$("c_year").value) $("c_year").value = d.year;
+  fillVariants();
+  $("vin_info").innerHTML = d.lines.map(esc).join("<br>");
+  $("vin_info").className = "vin-info" + (d.warn ? " warn" : "");
+}
+
+async function setLang(lang) {
+  await api("/api/settings", {lang});
+  load();
+}
+
+async function saveSettings() {
+  const body = {};
+  for (const k of SETTINGS_KEYS.slice(1)) body[k] = $("s_" + k).value;
+  await api("/api/settings", body);
+  toggle("settings");
+  load();
+}
+
+function showTab(tab) {
+  $("tab_jobs").classList.toggle("active", tab === "jobs");
+  $("tab_cars").classList.toggle("active", tab === "cars");
+  $("history").classList.toggle("hidden", tab !== "jobs");
+  $("cars").classList.toggle("hidden", tab !== "cars");
+}
+
+async function loadCars() {
+  const cars = await api("/api/cars");
+  $("cars").innerHTML = cars.map(c => `<div onclick="window.open('/car/${c.vin}')"><span>${esc(c.car)} ${esc(c.year)} · ${esc(c.name)}<br><small>${esc(c.vin)}</small></span>
+    <small>${c.visits} ${ui.hist_visits}<br>${esc(c.last.split("-").reverse().join("."))}</small></div>`).join("") || `<small>${ui.cars_empty}</small>`;
+}
+
+async function loadHistory() {
+  loadCars();
+  const items = await api("/api/jobs");
+  $("history").innerHTML = items.map(j => `<div onclick="openJob('${j.id}')"><span>${esc(serviceName(j.service))}<br><small>${esc(j.client.name)} ${esc(j.client.car)} ${esc(j.client.vin)}</small></span>
+    <small>${esc(j.created.replace("T", " ").slice(0, 16))}<br>${statusLabel(j.status)}</small></div>`).join("") || `<small>${ui.history_empty}</small>`;
+}
+
+async function startService(id) {
+  const svc = catalog.services.find(x => x.id === id);
+  const c = client();
+  if (!c.vin && !c.name && !confirm(ui.no_client_q)) return;
+  if (svc.prep && !confirm(svc.name + "\n\n" + ui.prep + ": " + svc.prep + "\n\n" + ui.start_q)) return;
+  current = await api("/api/jobs", {service: id, client: c});
+  render();
+  watch();
+}
+
+async function openJob(id) {
+  current = await api("/api/job/" + id);
+  for (const k of ["name", "phone", "car", "year", "vin"]) if (current.client[k]) $("c_" + k).value = current.client[k];
+  fillVariants(current.client.variant || "");
+  checkVin();
+  render();
+  watch();
+}
+
+function watch() {
+  clearInterval(poll);
+  poll = setInterval(async () => {
+    if (!current) return clearInterval(poll);
+    const fresh = await api("/api/job/" + current.id);
+    const changed = fresh.log.length !== current.log.length || fresh.status !== current.status;
+    current = fresh;
+    if (changed) render();
+    if (fresh.status !== "capturing") { clearInterval(poll); loadHistory(); }
+  }, 1000);
+}
+
+function render() {
+  const j = current, svc = catalog.services.find(x => x.id === j.service);
+  $("job").classList.remove("hidden");
+  $("j_title").textContent = svc.name;
+  $("j_status").textContent = statusLabel(j.status);
+  $("j_status").className = "badge " + j.status;
+  $("j_prep").classList.toggle("hidden", !svc.prep);
+  $("j_prep").textContent = svc.prep ? ui.prep + ": " + svc.prep : "";
+  $("j_console").textContent = j.log.join("\n") || ui.waiting;
+  $("j_console").scrollTop = 1e9;
+  const busy = j.status === "capturing", a = [];
+  if (busy) a.push(`<button onclick="act('stop')">${ui.stop}</button>`);
+  if (svc.mode === "auto" && !busy) a.push(`<button onclick="act('capture',{stage:'report'})">${ui.capture_again}</button>`);
+  if (svc.capture) {
+    a.push(`<button ${busy ? "disabled" : ""} onclick="act('capture',{stage:'before'})">${ui.capture_before}</button>`);
+    a.push(`<button ${busy ? "disabled" : ""} onclick="act('capture',{stage:'after'})">${ui.capture_after}</button>`);
+  }
+  if (svc.group === "toolbox") a.push(`<button onclick="window.open(catalog.settings.toolbox_url)">${ui.open_toolbox}</button>`);
+  $("j_actions").innerHTML = a.join("");
+  $("j_steps").innerHTML = (svc.steps || []).map((t, i) =>
+    `<label><input type="checkbox" ${j.steps_done[i] ? "checked" : ""} onchange="stepDone(${i}, this.checked)"> ${esc(t)}</label>`).join("");
+  const reports = Object.entries(j.captures).map(([k, v]) =>
+    `<a href="/reports/${esc(v.report)}" target="_blank">${ui.report} ${({report: "", before: ui.before, after: ui.after})[k]}</a>`);
+  if (j.act) reports.push(`<a href="/reports/${esc(j.act)}" target="_blank"><b>${ui.act}</b></a>`);
+  $("j_reports").innerHTML = reports.length ? "<p>" + reports.join(" · ") + "</p>" : "";
+  // Последний отчёт (со схемой машины) — прямо в окне заказа
+  const latest = j.captures.after || j.captures.report || j.captures.before;
+  $("j_frame").classList.toggle("hidden", !latest);
+  if (latest && $("j_frame").dataset.src !== latest.report) {
+    $("j_frame").dataset.src = latest.report;
+    $("j_frame").src = "/reports/" + latest.report;
+  }
+  if (document.activeElement !== $("j_notes")) $("j_notes").value = j.notes || "";
+  if (document.activeElement !== $("j_price")) $("j_price").value = j.price || "";
+}
+
+async function act(action, body = {}) {
+  try { current = await api(`/api/job/${current.id}/${action}`, body); } catch (e) { alert(e.message); }
+  render();
+  watch();
+}
+
+function stepDone(i, done) {
+  current.steps_done[i] = done;
+  api(`/api/job/${current.id}/update`, {steps_done: current.steps_done});
+}
+
+async function finishJob() {
+  current = await api(`/api/job/${current.id}/finish`, {notes: $("j_notes").value, price: $("j_price").value, client: client()});
+  render();
+  loadHistory();
+  window.open("/reports/" + current.act, "_blank");
+}
+
+function closeJob() { current = null; clearInterval(poll); $("job").classList.add("hidden"); }
+
+load();
+</script>
+</body>
+</html>
